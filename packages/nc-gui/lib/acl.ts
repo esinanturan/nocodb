@@ -53,6 +53,8 @@ const rolePermissions = {
   [ProjectRoles.OWNER]: {
     include: {
       baseDelete: true,
+      manageSnapshot: true,
+      migrateBase: true,
     },
   },
   [ProjectRoles.CREATOR]: {
@@ -88,6 +90,8 @@ const rolePermissions = {
       baseDuplicate: true,
       sourceCreate: true,
       baseAuditList: true,
+
+      extensionList: true,
     },
   },
   [ProjectRoles.EDITOR]: {

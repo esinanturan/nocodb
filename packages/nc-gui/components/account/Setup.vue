@@ -73,6 +73,7 @@ onMounted(async () => {
       <div class="flex flex-col gap-6 w-150">
         <div
           v-for="config of configs"
+          :key="config.key"
           class="flex flex-col border-1 rounded-2xl border-gray-200 p-6 gap-2 hover:(shadow bg-gray-10)"
           :class="{
             'cursor-pointer': config.itemClick,
@@ -125,5 +126,3 @@ onMounted(async () => {
     <LazyAccountSetupListModal v-if="openedCategory" v-model="listModalDlg" :category="openedCategory" />
   </div>
 </template>
-
-<style scoped lang="scss"></style>

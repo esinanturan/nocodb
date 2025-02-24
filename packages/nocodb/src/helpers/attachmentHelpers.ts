@@ -1,6 +1,8 @@
 import path from 'path';
+import fs from 'fs';
 import mime from 'mime/lite';
 import slash from 'slash';
+import { PublicAttachmentScope } from 'nocodb-sdk';
 import { getToolDir } from '~/utils/nc-config';
 import { NcError } from '~/helpers/catchError';
 
@@ -64,3 +66,17 @@ export function getPathFromUrl(url: string, removePrefix = false) {
 
   return decodeURI(`${pathName}${newUrl.search}${newUrl.hash}`);
 }
+
+export const localFileExists = (path: string) => {
+  return fs.promises
+    .access(path)
+    .then(() => true)
+    .catch(() => false);
+};
+
+export const ATTACHMENT_ROOTS = [
+  'thumbnails',
+  PublicAttachmentScope.WORKSPACEPICS,
+  PublicAttachmentScope.PROFILEPICS,
+  PublicAttachmentScope.ORGANIZATIONPICS,
+];

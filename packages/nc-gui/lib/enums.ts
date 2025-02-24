@@ -1,3 +1,5 @@
+import { ViewLockType } from 'nocodb-sdk'
+
 export { ClientType, IntegrationCategoryType, SyncDataType } from 'nocodb-sdk'
 
 export enum Language {
@@ -12,15 +14,17 @@ export enum Language {
   fa = 'فارسی',
   fi = 'Suomalainen',
   fr = 'Français',
-  he = 'עִברִית',
+  he = 'עברית',
   hi = 'हिन्दी',
   hr = 'Hrvatski',
   hu = 'Magyar',
   id = 'Bahasa Indonesia',
   it = 'Italiano',
   ja = '日本語',
+  kn = 'ಕನ್ನಡ',
   ko = '한국어',
   lv = 'Latviešu',
+  ml = 'മലയാളം',
   nl = 'Nederlandse',
   no = 'Norsk',
   pl = 'Polski',
@@ -39,7 +43,7 @@ export enum Language {
 }
 
 export enum LanguageAlias {
-  zn_CN = 'zh-Hans',
+  zh_CN = 'zh-Hans',
   zh_TW = 'zh-Hant',
 }
 
@@ -48,11 +52,7 @@ export enum NavigateDir {
   PREV,
 }
 
-export enum LockType {
-  Personal = 'personal',
-  Locked = 'locked',
-  Collaborative = 'collaborative',
-}
+export { ViewLockType as LockType }
 
 export enum TabType {
   TABLE = 'table',
@@ -77,6 +77,16 @@ export enum SmartsheetStoreEvents {
   GROUP_BY_ADD = 'group-by-add',
   GROUP_BY_REMOVE = 'group-by-remove',
   FILTER_ADD = 'filter-add',
+  CELL_SELECTED = 'cell-selected',
+}
+
+export enum SmartsheetScriptActions {
+  UPDATE_PROGRESS = 'update-progress',
+  RESET_PROGRESS = 'reset-progress',
+  ACTION = 'action',
+
+  RELOAD_VIEW = 'reload-view',
+  RELOAD_ROW = 'reload-row',
 }
 
 export enum DataSourcesSubTab {
@@ -171,9 +181,17 @@ export enum AuditLogsDateRange {
 }
 
 export enum ExtensionsEvents {
+  ADD = 'add',
   DUPLICATE = 'duplicate',
+  CLEARDATA = 'clearData',
 }
 
 export enum IntegrationStoreEvents {
   INTEGRATION_ADD = 'integration-add',
+}
+
+export enum WorkspaceIconType {
+  IMAGE = 'IMAGE',
+  EMOJI = 'EMOJI',
+  ICON = 'ICON',
 }

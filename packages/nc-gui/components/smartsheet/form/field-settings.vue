@@ -3,7 +3,7 @@ import { UITypes, isSelectTypeCol } from 'nocodb-sdk'
 
 const { formState, activeField, updateColMeta, isRequired } = useFormViewStoreOrThrow()
 
-const { betaFeatureToggleState } = useBetaFeatureToggle()
+const { isFeatureEnabled } = useBetaFeatureToggle()
 
 const updateSelectFieldLayout = (value: boolean) => {
   if (!activeField.value) return
@@ -13,7 +13,7 @@ const updateSelectFieldLayout = (value: boolean) => {
 }
 
 const columnSupportsScanning = (elementType: UITypes) =>
-  betaFeatureToggleState.show &&
+  isFeatureEnabled(FEATURE_FLAG.FORM_SUPPORT_COLUMN_SCANNING) &&
   [UITypes.SingleLineText, UITypes.Number, UITypes.Email, UITypes.URL, UITypes.LongText].includes(elementType)
 </script>
 
@@ -60,13 +60,15 @@ const columnSupportsScanning = (elementType: UITypes) =>
           </div>
         </div>
 
+        <SmartsheetFormFieldSettingsVisibility />
+
         <!-- Limit options -->
         <div v-if="isSelectTypeCol(activeField.uidt)" class="w-full flex items-start justify-between gap-3">
           <div class="flex-1 max-w-[calc(100%_-_40px)]">
             <div class="font-medium text-gray-800">{{ $t('labels.limitOptions') }}</div>
             <div class="text-gray-500 mt-1">{{ $t('labels.limitOptionsSubtext') }}.</div>
             <div v-if="activeField.meta.isLimitOption" class="mt-3">
-              <LazySmartsheetFormLimitOptions
+              <SmartsheetFormLimitOptions
                 v-model:model-value="activeField.meta.limitOptions"
                 :form-field-state="formState[activeField.title] || ''"
                 :column="activeField"
@@ -75,7 +77,7 @@ const columnSupportsScanning = (elementType: UITypes) =>
                 @update:form-field-state="(value)=>{
                                   formState[activeField!.title] = value
                                 }"
-              ></LazySmartsheetFormLimitOptions>
+              ></SmartsheetFormLimitOptions>
             </div>
           </div>
 

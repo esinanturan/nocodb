@@ -4,22 +4,22 @@ import { Logger } from '@nestjs/common';
 import slash from 'slash';
 import type { IStorageAdapterV2 } from '~/types/nc-plugin';
 import type { Job } from 'bull';
-import type { AttachmentResType } from 'nocodb-sdk';
+import type { AttachmentResType, PublicAttachmentScope } from 'nocodb-sdk';
 import type { ThumbnailGeneratorJobData } from '~/interface/Jobs';
-import type Sharp from 'sharp';
 import NcPluginMgrv2 from '~/helpers/NcPluginMgrv2';
 import { getPathFromUrl } from '~/helpers/attachmentHelpers';
+import Noco from '~/Noco';
 
 export class ThumbnailGeneratorProcessor {
   private logger = new Logger(ThumbnailGeneratorProcessor.name);
 
   async job(job: Job<ThumbnailGeneratorJobData>) {
-    const { attachments } = job.data;
+    const { attachments, scope } = job.data;
 
     const results = [];
 
     for (const attachment of attachments) {
-      const thumbnail = await this.generateThumbnail(attachment);
+      const thumbnail = await this.generateThumbnail(attachment, scope);
 
       if (!thumbnail) {
         continue;
@@ -38,20 +38,12 @@ export class ThumbnailGeneratorProcessor {
 
   private async generateThumbnail(
     attachment: AttachmentResType,
+    scope?: PublicAttachmentScope,
   ): Promise<{ [key: string]: string }> {
-    let sharp: typeof Sharp;
-
-    try {
-      sharp = (await import('sharp')).default;
-    } catch {
-      // ignore
-    }
+    const sharp = Noco.sharp;
 
     if (!sharp) {
-      this.logger.warn(
-        `Thumbnail generation is not supported in this platform at the moment.`,
-      );
-      return;
+      return null;
     }
 
     sharp.concurrency(1);
@@ -62,6 +54,7 @@ export class ThumbnailGeneratorProcessor {
       const { file, relativePath } = await this.getFileData(
         attachment,
         storageAdapter,
+        scope,
       );
 
       const thumbnailPaths = {
@@ -128,13 +121,14 @@ export class ThumbnailGeneratorProcessor {
   private async getFileData(
     attachment: AttachmentResType,
     storageAdapter: IStorageAdapterV2,
+    scope?: PublicAttachmentScope,
   ): Promise<{ file: Buffer; relativePath: string }> {
     let relativePath;
 
     if (attachment.path) {
       relativePath = path.join(
         'nc',
-        'uploads',
+        scope ? '' : 'uploads',
         attachment.path.replace(/^download[/\\]/i, ''),
       );
     } else if (attachment.url) {
@@ -143,8 +137,17 @@ export class ThumbnailGeneratorProcessor {
 
     const file = await storageAdapter.fileRead(relativePath);
 
-    // remove everything before 'nc/uploads/' (including nc/uploads/) in relativePath
-    relativePath = relativePath.replace(/^.*?nc[/\\]uploads[/\\]/, '');
+    const scopePath = scope ? scope : 'uploads';
+
+    // remove everything before 'nc/${scopePath}/' (including nc/${scopePath}/) in relativePath
+    relativePath = relativePath.replace(
+      new RegExp(`^.*?nc[/\\\\]${scopePath}[/\\\\]`),
+      '',
+    );
+
+    if (scope) {
+      relativePath = `${scopePath}/${relativePath}`;
+    }
 
     return { file, relativePath };
   }

@@ -109,7 +109,7 @@ onMounted(() => {
       <NcPageHeader>
         <template #icon>
           <div class="flex justify-center items-center h-6 w-6">
-            <GeneralWorkspaceIcon :workspace="currentWorkspace" hide-label size="small" />
+            <GeneralWorkspaceIcon :workspace="currentWorkspace" size="medium" />
           </div>
         </template>
         <template #title>
@@ -128,8 +128,8 @@ onMounted(() => {
         <a-tab-pane key="collaborators" class="w-full">
           <template #tab>
             <div class="tab-title">
-              <GeneralIcon icon="users" class="!h-3.5 !w-3.5" />
-              Members
+              <GeneralIcon icon="users" class="h-4 w-4" />
+              {{ $t('labels.members') }}
             </div>
           </template>
           <WorkspaceCollaboratorsList :workspace-id="currentWorkspace.id" />
@@ -140,25 +140,11 @@ onMounted(() => {
         <a-tab-pane key="settings" class="w-full">
           <template #tab>
             <div class="tab-title" data-testid="nc-workspace-settings-tab-settings">
-              <GeneralIcon icon="settings" />
-              Settings
+              <GeneralIcon icon="ncSettings" class="h-4 w-4" />
+              {{ $t('labels.settings') }}
             </div>
           </template>
           <WorkspaceSettings :workspace-id="currentWorkspace.id" />
-        </a-tab-pane>
-      </template>
-
-      <template v-if="isUIAllowed('workspaceAuditList') && !props.workspaceId">
-        <a-tab-pane key="audit" class="w-full">
-          <template #tab>
-            <div class="tab-title">
-              <GeneralIcon icon="audit" class="!h-3.5 !w-3.5" />
-              Audit Logs
-            </div>
-          </template>
-          <div class="h-[calc(100vh-92px)] px-6">
-            <WorkspaceAuditLogs :workspace-id="currentWorkspace.id" />
-          </div>
         </a-tab-pane>
       </template>
     </NcTabs>
@@ -166,11 +152,6 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-.nc-workspace-avatar {
-  @apply min-w-5 h-5 w-5 rounded-[6px] flex items-center justify-center text-white font-weight-bold uppercase;
-  font-size: 0.7rem;
-}
-
 .tab {
   @apply flex flex-row items-center gap-x-2;
 }

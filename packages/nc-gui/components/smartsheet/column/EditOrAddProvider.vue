@@ -10,6 +10,7 @@ interface Props {
   editDescription?: boolean
   fromTableExplorer?: boolean
   isColumnValid?: (value: Partial<ColumnType>) => boolean
+  disableTitleFocus?: boolean
 }
 
 const props = defineProps<Props>()
@@ -22,14 +23,23 @@ const { column, preload, tableExplorerColumns, fromTableExplorer, isColumnValid,
 
 useProvideColumnCreateStore(meta, column, tableExplorerColumns, fromTableExplorer, isColumnValid)
 
-const { isWebhookCreateModalOpen } = useColumnCreateStoreOrThrow()
+const { isWebhookCreateModalOpen, isAiButtonConfigModalOpen } = useColumnCreateStoreOrThrow()
 
-const isWebHookModalOpen = () => {
-  return isWebhookCreateModalOpen.value
+/**
+ * Determines whether the root dropdown should remain open.
+ *
+ * This function prevents the root dropdown from closing when certain modals are open.
+ * The current implementation checks if either the Webhook Create Modal or the AI Button Config Modal
+ * is active, but developers can extend this logic to include more modals as needed.
+ *
+ * @returns {boolean} - Returns `true` if any of the specified modals (e.g., Webhook Create Modal, AI Button Config Modal) are open, otherwise `false`.
+ */
+const shouldKeepModalOpen = (): boolean => {
+  return isWebhookCreateModalOpen.value || isAiButtonConfigModalOpen.value
 }
 
 defineExpose({
-  isWebHookModalOpen,
+  shouldKeepModalOpen,
 })
 </script>
 
@@ -39,7 +49,8 @@ defineExpose({
     :column-position="props.columnPosition"
     :edit-description="editDescription"
     :from-table-explorer="props.fromTableExplorer || false"
-    @submit="emit('submit')"
+    :disable-title-focus="disableTitleFocus"
+    @submit="emit('submit', $event)"
     @cancel="emit('cancel')"
     @mounted="emit('mounted')"
   />

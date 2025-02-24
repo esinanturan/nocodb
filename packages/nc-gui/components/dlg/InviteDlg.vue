@@ -81,6 +81,8 @@ const focusOnDiv = () => {
   isDivFocused.value = true
 }
 
+const { t } = useI18n()
+
 watch(dialogShow, async (newVal) => {
   if (newVal) {
     try {
@@ -124,7 +126,7 @@ const insertOrUpdateString = (str: string) => {
   emailBadges.value.push(str)
 }
 
-const emailInputValidation = (input: string, isBulkEmailCopyPaste: boolean = false): boolean => {
+const emailInputValidation = (input: string, isBulkEmailCopyPaste = false): boolean => {
   if (!input.length) {
     if (isBulkEmailCopyPaste) return false
 
@@ -274,7 +276,7 @@ const inviteCollaborator = async () => {
       }
     }
 
-    message.success('Invitation sent successfully')
+    message.success(t('msg.info.inviteSent'))
     inviteData.email = ''
     emailBadges.value = []
     dialogShow.value = false
@@ -417,15 +419,15 @@ const onRoleChange = (role: keyof typeof RoleLabels) => (inviteData.roles = role
                   </a-input>
                 </div>
 
-                <div class="flex flex-col max-h-64 overflow-y-auto nc-scrollbar-md mt-2">
+                <div class="flex flex-col max-h-64 overflow-y-auto nc-scrollbar-md mt-2 px-2">
                   <div
                     v-for="ws in workSpaceSelectList"
                     :key="ws.id"
-                    class="px-4 cursor-pointer hover:bg-gray-100 rounded-lg h-9.5 py-2 w-full flex gap-2"
+                    class="px-2 cursor-pointer hover:bg-gray-100 rounded-lg h-9.5 py-2 w-full flex gap-2"
                     @click="checked[ws.id!] = !checked[ws.id!]"
                   >
                     <div class="flex gap-2 capitalize items-center">
-                      <GeneralWorkspaceIcon :hide-label="true" :workspace="ws" size="small" />
+                      <GeneralWorkspaceIcon :workspace="ws" size="medium" />
                       {{ ws.title }}
                     </div>
                     <div class="flex-1" />

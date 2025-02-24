@@ -5,7 +5,7 @@ import InboxIcon from '~icons/nc-icons/inbox'
 
 const props = defineProps<{ modelValue: boolean; column: any; hideBackBtn?: boolean }>()
 
-const emit = defineEmits(['update:modelValue', 'addNewRecord', 'attachLinkedRecord'])
+const emit = defineEmits(['update:modelValue', 'addNewRecord', 'attachLinkedRecord', 'escape'])
 
 const vModel = useVModel(props, 'modelValue', emit)
 
@@ -42,6 +42,8 @@ const {
   unlink,
   row,
   resetChildrenExcludedOffsetCount,
+  loadRelatedTableMeta,
+  targetViewColumnsById,
 } = useLTARStoreOrThrow()
 
 const { addLTARRef, isNew, removeLTARRef, state: rowState } = useSmartsheetRowStoreOrThrow()
@@ -49,6 +51,8 @@ const { addLTARRef, isNew, removeLTARRef, state: rowState } = useSmartsheetRowSt
 const isPublic = inject(IsPublicInj, ref(false))
 
 const isExpandedFormCloseAfterSave = ref(false)
+
+const isNewRecord = ref(false)
 
 isChildrenExcludedLoading.value = true
 
@@ -66,7 +70,7 @@ const relation = computed(() => {
 
 const linkRow = async (row: Record<string, any>, id: number) => {
   if (isNew.value) {
-    addLTARRef(row, injectedColumn?.value as ColumnType)
+    await addLTARRef(row, injectedColumn?.value as ColumnType)
     if (relation.value === 'oo' || relation.value === 'bt') {
       isChildrenExcludedListLinked.value.forEach((isLinked, idx) => {
         if (isLinked) {
@@ -168,7 +172,7 @@ const fields = computedInject(FieldsInj, (_fields) => {
   return (relatedTableMeta.value.columns ?? [])
     .filter((col) => !isSystemColumn(col) && !isPrimary(col) && !isLinksOrLTAR(col) && !isAttachment(col))
     .sort((a, b) => {
-      return (a.meta?.defaultViewColOrder ?? Infinity) - (b.meta?.defaultViewColOrder ?? Infinity)
+      return (targetViewColumnsById.value[a.id!]?.order ?? Infinity) - (targetViewColumnsById.value[b.id!]?.order ?? Infinity)
     })
     .slice(0, isMobileMode.value ? 1 : 3)
 })
@@ -222,6 +226,7 @@ const addNewRecord = () => {
   expandedFormRow.value = {}
   expandedFormDlg.value = true
   isExpandedFormCloseAfterSave.value = true
+  isNewRecord.value = true
 }
 
 const onCreatedRecord = (record: any) => {
@@ -233,6 +238,12 @@ const onCreatedRecord = (record: any) => {
   reloadViewDataTrigger?.trigger({
     shouldShowLoading: false,
   })
+
+  if (!isNewRecord.value) {
+    vModel.value = false
+
+    return
+  }
 
   const msgVNode = h(
     'div',
@@ -263,6 +274,7 @@ const onCreatedRecord = (record: any) => {
   message.success(msgVNode)
 
   vModel.value = false
+  isNewRecord.value = false
 }
 
 const linkedShortcuts = (e: KeyboardEvent) => {
@@ -293,7 +305,7 @@ watch(childrenExcludedListPagination, () => {
 
 onMounted(() => {
   window.addEventListener('keydown', linkedShortcuts)
-
+  loadRelatedTableMeta()
   setTimeout(() => {
     filterQueryRef.value?.focus()
   }, 100)
@@ -308,6 +320,23 @@ onUnmounted(() => {
 const onFilterChange = () => {
   childrenExcludedListPagination.page = 1
   resetChildrenExcludedOffsetCount()
+}
+
+const isSearchInputFocused = ref(false)
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    if (!childrenExcludedListPagination.query) emit('escape')
+    filterQueryRef.value?.blur()
+  } else if (e.key === 'Enter') {
+    if (
+      childrenExcludedListPagination.query &&
+      ncIsArray(childrenExcludedList.value?.list) &&
+      childrenExcludedList.value?.list.length
+    ) {
+      onClick(childrenExcludedList.value?.list[0], '0')
+    }
+  }
 }
 </script>
 
@@ -332,14 +361,10 @@ const onFilterChange = () => {
               placeholder="Search records to link..."
               class="w-full nc-excluded-search min-h-4 !pl-0"
               size="small"
+              @focus="isSearchInputFocused = true"
+              @blur="isSearchInputFocused = false"
               @change="onFilterChange"
-              @keydown.capture.stop="
-                (e) => {
-                  if (e.key === 'Escape') {
-                    filterQueryRef?.blur()
-                  }
-                }
-              "
+              @keydown.capture.stop="handleKeyDown"
             >
               <template #prefix>
                 <GeneralIcon icon="search" class="nc-search-icon mr-2 h-4 w-4 text-gray-500" />
@@ -362,7 +387,7 @@ const onFilterChange = () => {
               <div
                 v-for="(_x, i) in Array.from({ length: 10 })"
                 :key="i"
-                class="flex flex-row gap-3 px-3 py-2 transition-all relative border-b-1 border-gray-200 hover:bg-gray-50"
+                class="flex flex-row gap-3 px-3 py-2 transition-all relative border-b-1 border-gray-200 hover:c"
               >
                 <div class="flex items-center">
                   <a-skeleton-image class="!h-11 !w-11 !rounded-md overflow-hidden children:(!h-full !w-full)" />
@@ -390,6 +415,7 @@ const onFilterChange = () => {
                 :fields="fields"
                 :is-linked="isChildrenExcludedListLinked[Number.parseInt(id)]"
                 :is-loading="isChildrenExcludedListLoading[Number.parseInt(id)]"
+                :is-selected="!!(isSearchInputFocused && childrenExcludedListPagination.query && Number.parseInt(id) === 0)"
                 :related-table-display-value-prop="relatedTableDisplayValueProp"
                 :row="refRow"
                 data-testid="nc-excluded-list-item"
@@ -470,19 +496,18 @@ const onFilterChange = () => {
         :row="{
           row: expandedFormRow,
           oldRow: {},
-          rowMeta:
-            Object.keys(expandedFormRow).length > 0
-              ? {}
-              : {
-                  new: true,
-                },
+          rowMeta: !isNewRecord
+            ? {}
+            : {
+                new: true,
+              },
         }"
         :row-id="extractPkFromRow(expandedFormRow, relatedTableMeta.columns as ColumnType[])"
         :state="newRowState"
         use-meta-fields
         maintain-default-view-order
         :skip-reload="true"
-        new-record-submit-btn-text="Create & Link"
+        :new-record-submit-btn-text="!isNewRecord ? undefined : 'Create & Link'"
         @created-record="onCreatedRecord"
       />
     </Suspense>

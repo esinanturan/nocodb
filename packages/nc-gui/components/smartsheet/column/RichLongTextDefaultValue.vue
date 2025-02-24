@@ -11,10 +11,12 @@ const vModel = useVModel(props, 'value', emits)
 
 const isVisibleDefaultValueInput = useVModel(props, 'isVisibleDefaultValueInput', emits)
 
+const { isAiModeFieldModal } = usePredictFields()
+
 const cdfValue = computed({
   get: () => vModel.value.cdf,
   set: (value) => {
-    if (value === '<br />') {
+    if (value === '<br />' || value === '<br>') {
       vModel.value.cdf = null
     } else {
       vModel.value.cdf = value
@@ -46,6 +48,9 @@ const cdfValue = computed({
     <div class="flex flex-row gap-2">
       <div
         class="nc-default-value-wrapper nc-rich-long-text-default-value border-1 relative pt-7 flex items-center w-full px-0 border-gray-300 rounded-md max-h-70 pb-1 focus-within:(border-brand-500 shadow-selected) transition-all duration-0.3s"
+        :class="{
+          'bg-white': isAiModeFieldModal,
+        }"
       >
         <LazyCellRichText v-model:value="cdfValue" class="border-t-1 border-gray-100 !max-h-80 !min-h-30" show-menu />
       </div>

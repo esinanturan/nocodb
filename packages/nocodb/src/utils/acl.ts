@@ -61,6 +61,9 @@ const permissionScopes = {
     'integrationDelete',
     'integrationUpdate',
     'integrationList',
+
+    // AI
+    'aiSchema',
   ],
   base: [
     'formViewGet',
@@ -108,7 +111,6 @@ const permissionScopes = {
     'hideAllColumns',
     'showAllColumns',
     'auditListRow',
-    'auditRowUpdate',
     'dataUpdate',
     'dataDelete',
     'dataInsert',
@@ -163,6 +165,11 @@ const permissionScopes = {
     'hookTrigger',
 
     'userInvite',
+
+    // AI
+    'aiUtils',
+    'aiData',
+    'aiBaseSchema',
   ],
 };
 
@@ -248,7 +255,6 @@ const rolePermissions:
     include: {
       hideAllColumns: true,
       showAllColumns: true,
-      auditRowUpdate: true,
       dataUpdate: true,
       dataDelete: true,
       dataInsert: true,
@@ -283,6 +289,10 @@ const rolePermissions:
       // upload: true,
       // uploadViaURL: true,
       hookTrigger: true,
+
+      // AI
+      aiUtils: true,
+      aiData: true,
     },
   },
   [ProjectRoles.CREATOR]: {
@@ -617,7 +627,6 @@ const permissionDescriptions: Record<string, string> = {
   hideAllColumns: 'hide all columns',
   showAllColumns: 'show all columns',
   auditListRow: 'view audit log for a row',
-  auditRowUpdate: 'update audit log for a row',
   dataUpdate: 'update data',
   dataDelete: 'delete data',
   dataInsert: 'insert new data',

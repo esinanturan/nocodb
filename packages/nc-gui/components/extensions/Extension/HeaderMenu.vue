@@ -18,7 +18,7 @@ const { activeError } = useExtensionHelperOrThrow()
       </NcButton>
 
       <template #overlay>
-        <NcMenu>
+        <NcMenu variant="small">
           <template v-if="!activeError">
             <NcMenuItem data-rec="true" @click="emits('rename')">
               <GeneralIcon icon="edit" />
@@ -47,5 +47,3 @@ const { activeError } = useExtensionHelperOrThrow()
     </NcDropdown>
   </div>
 </template>
-
-<style scoped lang="scss"></style>

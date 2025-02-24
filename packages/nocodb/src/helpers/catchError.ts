@@ -23,6 +23,7 @@ export function extractDBError(error): {
   message: string;
   error: string;
   details?: any;
+  code?: string;
 } | void {
   if (!error.code) return;
 
@@ -319,7 +320,11 @@ export function extractDBError(error): {
           const detailMatch = error.detail
             ? error.detail.match(/Column (\w+)/)
             : null;
-          const columnName = detailMatch ? detailMatch[1] : 'unknown';
+
+          const columnName =
+            detailMatch?.[1] ??
+            error.message.match(/ set\s+"([^"]+)"/)?.[1] ??
+            'unknown';
           message = `Invalid data type or value for column '${columnName}'.`;
           _type = DBError.DATA_TYPE_MISMATCH;
           _extra = { column: columnName };
@@ -448,6 +453,7 @@ export function extractDBError(error): {
     return {
       error: NcErrorType.DATABASE_ERROR,
       message,
+      code: error.code,
     };
   }
 }
@@ -488,10 +494,51 @@ export class ExternalTimeout extends ExternalError {}
 
 export class UnprocessableEntity extends NcBaseError {}
 
+export class OptionsNotExistsError extends BadRequest {
+  constructor({
+    columnTitle,
+    options,
+    validOptions,
+  }: {
+    columnTitle: string;
+    options: string[];
+    validOptions: string[];
+  }) {
+    super(
+      `Invalid option(s) "${options.join(
+        ', ',
+      )}" provided for column "${columnTitle}". Valid options are "${validOptions.join(
+        ', ',
+      )}"`,
+    );
+    this.columnTitle = columnTitle;
+    this.options = options;
+    this.validOptions = validOptions;
+  }
+  columnTitle: string;
+  options: string[];
+  validOptions: string[];
+}
+
+export class TestConnectionError extends NcBaseError {
+  public sql_code?: string;
+
+  constructor(message: string, sql_code?: string) {
+    super(message);
+    this.sql_code = sql_code;
+  }
+}
+
 export class AjvError extends NcBaseError {
-  constructor(param: { message: string; errors: ErrorObject[] }) {
+  humanReadableError: boolean;
+  constructor(param: {
+    message: string;
+    errors: ErrorObject[];
+    humanReadableError?: boolean;
+  }) {
     super(param.message);
     this.errors = param.errors;
+    this.humanReadableError = param.humanReadableError || false;
   }
 
   errors: ErrorObject[];
@@ -597,6 +644,10 @@ const errorHelpers: {
     message: (offset: string) => `Offset value '${offset}' is invalid`,
     code: 422,
   },
+  [NcErrorType.INVALID_PAGE_VALUE]: {
+    message: (page: string) => `Page value '${page}' is invalid`,
+    code: 422,
+  },
   [NcErrorType.INVALID_PK_VALUE]: {
     message: (value: any, pkColumn: string) =>
       `Primary key value '${value}' is invalid for column '${pkColumn}'`,
@@ -636,12 +687,31 @@ const errorHelpers: {
     code: 400,
   },
   [NcErrorType.FORMULA_ERROR]: {
-    message: (message: string) => `Formula error: ${message}`,
+    message: (message: string) => {
+      // try to extract db error - Experimental
+      if (message.includes(' - ')) {
+        const [_, dbError] = message.split(' - ');
+        return `Formula error: ${dbError}`;
+      }
+      return `Formula error: ${message}`;
+    },
     code: 400,
   },
   [NcErrorType.PERMISSION_DENIED]: {
     message: 'Permission denied',
     code: 403,
+  },
+  [NcErrorType.INVALID_ATTACHMENT_UPLOAD_SCOPE]: {
+    message: 'Invalid attachment upload scope',
+    code: 400,
+  },
+  [NcErrorType.REORDER_FAILED]: {
+    message: 'Reorder failed',
+    code: 400,
+  },
+  [NcErrorType.CANNOT_CALCULATE_INTERMEDIATE_ORDER]: {
+    message: 'Cannot calculate intermediate order',
+    code: 400,
   },
 };
 
@@ -719,6 +789,7 @@ export class NcError {
       },
     });
   }
+
   static authenticationRequired(args?: NcErrorArgs) {
     throw new NcBaseErrorv2(NcErrorType.AUTHENTICATION_REQUIRED, args);
   }
@@ -788,22 +859,43 @@ export class NcError {
     id: string | string[] | Record<string, string> | Record<string, string>[],
     args?: NcErrorArgs,
   ) {
+    let formatedId: string | string[] = '';
     if (!id) {
-      id = 'unknown';
+      formatedId = 'unknown';
     } else if (typeof id === 'string') {
-      id = [id];
+      formatedId = [id];
     } else if (Array.isArray(id)) {
       if (id.every((i) => typeof i === 'string')) {
-        id = id as string[];
+        formatedId = id as string[];
       } else {
-        id = id.map((i) => Object.values(i).join('___'));
+        formatedId = id.map((val) => {
+          const idsArr = Object.values(val);
+          if (idsArr.length > 1) {
+            return idsArr
+              .map((idVal) => idVal?.toString?.().replaceAll('_', '\\_'))
+              .join('___');
+          } else if (idsArr.length) {
+            return idsArr[0] as any;
+          } else {
+            return 'unknown';
+          }
+        });
       }
     } else {
-      id = Object.values(id).join('___');
+      const idsArr = Object.values(id);
+      if (idsArr.length > 1) {
+        formatedId = idsArr
+          .map((idVal) => idVal?.toString?.().replaceAll('_', '\\_'))
+          .join('___');
+      } else if (idsArr.length) {
+        formatedId = idsArr[0] as any;
+      } else {
+        formatedId = 'unknown';
+      }
     }
 
     throw new NcBaseErrorv2(NcErrorType.RECORD_NOT_FOUND, {
-      params: id,
+      params: formatedId,
       ...args,
     });
   }
@@ -839,6 +931,12 @@ export class NcError {
   static invalidOffsetValue(offset: string | number, args?: NcErrorArgs) {
     throw new NcBaseErrorv2(NcErrorType.INVALID_OFFSET_VALUE, {
       params: `${offset}`,
+      ...args,
+    });
+  }
+  static invalidPageValue(page: string | number, args?: NcErrorArgs) {
+    throw new NcBaseErrorv2(NcErrorType.INVALID_PAGE_VALUE, {
+      params: `${page}`,
       ...args,
     });
   }
@@ -913,12 +1011,20 @@ export class NcError {
     throw new Forbidden(message);
   }
 
-  static ajvValidationError(param: { message: string; errors: ErrorObject[] }) {
+  static ajvValidationError(param: {
+    message: string;
+    errors: ErrorObject[];
+    humanReadableError: boolean;
+  }) {
     throw new AjvError(param);
   }
 
   static unprocessableEntity(message = 'Unprocessable entity') {
     throw new UnprocessableEntity(message);
+  }
+
+  static testConnectionError(message = 'Unprocessable entity', code?: string) {
+    throw new TestConnectionError(message, code);
   }
 
   static notAllowed(message = 'Not allowed') {
@@ -950,6 +1056,17 @@ export class NcError {
     });
   }
 
+  static cannotCalculateIntermediateOrderError() {
+    throw new NcBaseErrorv2(
+      NcErrorType.CANNOT_CALCULATE_INTERMEDIATE_ORDER,
+      {},
+    );
+  }
+
+  static reorderFailed() {
+    throw new NcBaseErrorv2(NcErrorType.REORDER_FAILED, {});
+  }
+
   static integrationLinkedWithMultiple(
     bases: BaseType[],
     sources: SourceType[],
@@ -974,5 +1091,17 @@ export class NcError {
       },
       ...(args || {}),
     });
+  }
+
+  static invalidAttachmentUploadScope(args?: NcErrorArgs) {
+    throw new NcBaseErrorv2(NcErrorType.INVALID_ATTACHMENT_UPLOAD_SCOPE, args);
+  }
+
+  static optionsNotExists(props: {
+    columnTitle: string;
+    options: string[];
+    validOptions: string[];
+  }) {
+    throw new OptionsNotExistsError(props);
   }
 }

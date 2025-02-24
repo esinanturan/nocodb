@@ -13,6 +13,7 @@ import { XKnex } from '~/db/CustomKnex';
 import { NcConfig } from '~/utils/nc-config';
 import { MetaTable, RootScopes, RootScopeTables } from '~/utils/globals';
 import { NcError } from '~/helpers/catchError';
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -126,7 +127,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -140,6 +141,7 @@ export class MetaService {
       created_at: this.now(),
       updated_at: this.now(),
     });
+
     return insertObj;
   }
 
@@ -185,7 +187,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -292,7 +294,7 @@ export class MetaService {
   public async genNanoid(target: string) {
     const prefixMap: { [key: string]: string } = {
       [MetaTable.PROJECT]: 'p',
-      [MetaTable.BASES]: 'b',
+      [MetaTable.SOURCES]: 'b',
       [MetaTable.MODELS]: 'm',
       [MetaTable.COLUMNS]: 'c',
       [MetaTable.COL_RELATIONS]: 'l',
@@ -329,6 +331,8 @@ export class MetaService {
       [MetaTable.INTEGRATIONS]: 'int',
       [MetaTable.FILE_REFERENCES]: 'at',
       [MetaTable.COL_BUTTON]: 'btn',
+      [MetaTable.SNAPSHOT]: 'snap',
+      [MetaTable.SCRIPTS]: 'scr',
     };
 
     const prefix = prefixMap[target] || 'nc';
@@ -375,7 +379,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -448,7 +452,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -531,7 +535,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -605,7 +609,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -666,7 +670,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id && base_id !== RootScopes.WORKSPACE) {
+      if (!base_id) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',

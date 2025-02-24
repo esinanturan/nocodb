@@ -745,7 +745,7 @@ const [useProvideCalendarViewStore, useCalendarViewStore] = useInjectionState(
           base?.value.id as string,
           meta.value?.id as string,
           viewMeta?.value?.id as string,
-          id,
+          encodeURIComponent(id),
           updateObj,
           // todo:
           // {
@@ -786,6 +786,16 @@ const [useProvideCalendarViewStore, useCalendarViewStore] = useInjectionState(
           Object.assign(toUpdate.row, updatedRowData)
           Object.assign(toUpdate.oldRow, updatedRowData)
         }
+
+        const upPk = extractPkFromRow(updatedRowData, meta?.value?.columns as ColumnType[])
+
+        formattedSideBarData.value = formattedSideBarData.value.map((row) => {
+          if (extractPkFromRow(row.row, meta?.value?.columns as ColumnType[]) === upPk) {
+            Object.assign(row.row, updatedRowData)
+            Object.assign(row.oldRow, updatedRowData)
+          }
+          return row
+        })
 
         await fetchActiveDates()
         return updatedRowData
@@ -837,11 +847,10 @@ const [useProvideCalendarViewStore, useCalendarViewStore] = useInjectionState(
     watch(activeCalendarView, async (value, oldValue) => {
       if (oldValue === 'week') {
         pageDate.value = selectedDate.value
-        selectedMonth.value = selectedTime.value ?? selectedDate.value ?? selectedDateRange.value.start
-        selectedDate.value = selectedTime.value ?? selectedDateRange.value.start
+        selectedMonth.value = selectedDate.value ?? selectedDateRange.value.start
+        selectedDate.value = selectedDate.value ?? selectedDateRange.value.start
         selectedTime.value = selectedDate.value ?? selectedDateRange.value.start
       } else if (oldValue === 'month') {
-        selectedDate.value = selectedMonth.value
         pageDate.value = selectedDate.value
         selectedTime.value = selectedDate.value
         selectedDateRange.value = {

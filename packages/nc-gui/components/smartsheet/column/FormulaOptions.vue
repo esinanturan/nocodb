@@ -20,6 +20,12 @@ const uiTypesNotSupportedInFormulas = [UITypes.QrCode, UITypes.Barcode, UITypes.
 
 const vModel = useVModel(props, 'value', emit)
 
+// set default value
+vModel.value.meta = {
+  ...columnDefaultMeta[UITypes.Formula],
+  ...(vModel.value.meta || {}),
+}
+
 const { setAdditionalValidations, sqlUi, column, validateInfos } = useColumnCreateStoreOrThrow()
 
 const { t } = useI18n()
@@ -85,7 +91,25 @@ if ((column.value?.colOptions as any)?.formula_raw) {
 
 const source = computed(() => activeBase.value?.sources?.find((s) => s.id === meta.value?.source_id))
 
-const parsedTree = computedAsync(async () => {
+const parsedTree = ref<any>({
+  dataType: FormulaDataTypes.UNKNOWN,
+})
+
+const previousDisplayType = ref()
+
+const savedDisplayType = ref(vModel.value.meta.display_type)
+
+const hadError = ref(false)
+
+// Initialize a counter to track watcher invocations
+let watcherCounter = 0
+
+// Define the debounced async validation function
+const debouncedValidate = useDebounceFn(async () => {
+  // Increment the counter for each invocation
+  watcherCounter += 1
+  const currentCounter = watcherCounter
+
   try {
     const parsed = await validateFormulaAndExtractTreeWithType({
       formula: vModel.value.formula || vModel.value.formula_raw,
@@ -94,13 +118,44 @@ const parsedTree = computedAsync(async () => {
       clientOrSqlUi: source.value?.type as any,
       getMeta: async (modelId) => await getMeta(modelId),
     })
-    return parsed
+
+    // Update parsedTree only if this is the latest invocation
+    if (currentCounter === watcherCounter) {
+      parsedTree.value = parsed
+    }
+    if (hadError.value && previousDisplayType.value) {
+      vModel.value.meta.display_type = previousDisplayType.value
+    }
+    previousDisplayType.value = undefined
+    hadError.value = false
   } catch (e) {
-    return {
-      dataType: FormulaDataTypes.UNKNOWN,
+    // Update parsedTree only if this is the latest invocation
+    if (currentCounter === watcherCounter) {
+      parsedTree.value = {
+        dataType: FormulaDataTypes.UNKNOWN,
+      }
+    }
+    previousDisplayType.value = vModel.value.meta.display_type
+    hadError.value = true
+  } finally {
+    if (vModel.value?.colOptions?.parsed_tree?.dataType !== parsedTree.value?.dataType) {
+      vModel.value.meta.display_type = null
+    } else {
+      vModel.value.meta.display_type = savedDisplayType.value
     }
   }
-})
+}, 300)
+
+// Watch the formula inputs and call the debounced function
+watch(
+  () => vModel.value.formula || vModel.value.formula_raw,
+  () => {
+    debouncedValidate()
+  },
+  {
+    immediate: true,
+  },
+)
 
 // set additional validations
 setAdditionalValidations({
@@ -145,15 +200,6 @@ watch(
     immediate: true,
   },
 )
-
-watch(parsedTree, (value, oldValue) => {
-  if (oldValue === undefined && value) {
-    return
-  }
-  if (value?.dataType !== oldValue?.dataType) {
-    vModel.value.meta.display_type = null
-  }
-})
 </script>
 
 <template>
@@ -179,9 +225,19 @@ watch(parsedTree, (value, oldValue) => {
             <div>{{ $t('labels.formatting') }}</div>
           </div>
         </template>
-        <div class="flex flex-col px-0.5 gap-4">
+        <div class="flex flex-col px-0.5 gap-4 pb-0.5">
           <a-form-item class="mt-4" :label="$t('general.format')">
-            <a-select v-model:value="vModel.meta.display_type" class="w-full" :placeholder="$t('labels.selectAFormatType')">
+            <NcSelect
+              v-model:value="vModel.meta.display_type"
+              class="w-full nc-select-shadow"
+              :placeholder="$t('labels.selectAFormatType')"
+              allow-clear
+              @change="
+                (v) => {
+                  savedDisplayType = v
+                }
+              "
+            >
               <a-select-option v-for="option in supportedFormulaAlias" :key="option.value" :value="option.value">
                 <div class="flex w-full items-center gap-2 justify-between">
                   <div class="w-full">
@@ -196,7 +252,7 @@ watch(parsedTree, (value, oldValue) => {
                   />
                 </div>
               </a-select-option>
-            </a-select>
+            </NcSelect>
           </a-form-item>
 
           <template

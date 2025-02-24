@@ -43,9 +43,16 @@ const editColumnDropdown = ref(false)
 const columnOrder = ref<Pick<ColumnReqType, 'column_order'> | null>(null)
 
 const columnTypeName = computed(() => {
-  if (column.value.uidt === UITypes.LongText && parseProp(column?.value?.meta)?.richMode) {
-    return UITypesName.RichText
+  if (column.value.uidt === UITypes.LongText) {
+    if (parseProp(column.value?.meta)?.richMode) {
+      return UITypesName.RichText
+    }
+
+    if (parseProp(column.value?.meta)?.[LongTextAiMetaProp]) {
+      return UITypesName.AIPrompt
+    }
   }
+
   return column.value.uidt ? UITypesName[column.value.uidt] : ''
 })
 
@@ -53,6 +60,8 @@ const addField = async (payload: any) => {
   columnOrder.value = payload
   editColumnDropdown.value = true
 }
+
+const editOrAddProviderRef = ref()
 
 const enableDescription = ref(false)
 
@@ -99,8 +108,16 @@ const openDropDown = (e: Event) => {
   isDropDownOpen.value = !isDropDownOpen.value
 }
 
+const onVisibleChange = () => {
+  editColumnDropdown.value = true
+  if (!editOrAddProviderRef.value?.shouldKeepModalOpen()) {
+    editColumnDropdown.value = false
+    enableDescription.value = false
+  }
+}
+
 const onClick = (e: Event) => {
-  if (isMobileMode.value || !isUIAllowed('fieldEdit')) return
+  if (isMobileMode.value || !isUIAllowed('fieldEdit') || isLocked.value) return
 
   if (isDropDownOpen.value) {
     e.preventDefault()
@@ -133,7 +150,8 @@ const onClick = (e: Event) => {
     <div
       class="nc-cell-name-wrapper flex-1 flex items-center"
       :class="{
-        'max-w-[calc(100%_-_23px)]': !isExpandedForm,
+        'max-w-[calc(100%_-_23px)]': !isExpandedForm && !column.description?.length,
+        'max-w-[calc(100%_-_44px)]': !isExpandedForm && column.description?.length,
         'max-w-full': isExpandedForm && !isExpandedBulkUpdateForm,
       }"
     >
@@ -185,7 +203,7 @@ const onClick = (e: Event) => {
       <span v-if="(column.rqd && !column.cdf) || required" class="text-red-500">&nbsp;*</span>
 
       <GeneralIcon
-        v-if="isExpandedForm && !isExpandedBulkUpdateForm && !isMobileMode && isUIAllowed('fieldEdit')"
+        v-if="isExpandedForm && !isExpandedBulkUpdateForm && !isMobileMode && isUIAllowed('fieldEdit') && !isLocked"
         icon="arrowDown"
         class="flex-none cursor-pointer ml-1 group-hover:visible w-4 h-4"
         :class="{
@@ -218,6 +236,7 @@ const onClick = (e: Event) => {
       :trigger="['click']"
       :placement="isExpandedForm && !isExpandedBulkUpdateForm ? 'bottomLeft' : 'bottomRight'"
       :overlay-class-name="`nc-dropdown-edit-column ${editColumnDropdown ? 'active' : ''}`"
+      @visible-change="onVisibleChange"
     >
       <div v-if="isExpandedForm && !isExpandedBulkUpdateForm" class="h-[1px]" @dblclick.stop>&nbsp;</div>
       <div v-else />
@@ -226,6 +245,7 @@ const onClick = (e: Event) => {
         <div class="nc-edit-or-add-provider-wrapper">
           <LazySmartsheetColumnEditOrAddProvider
             v-if="editColumnDropdown"
+            ref="editOrAddProviderRef"
             :column="columnOrder ? null : column"
             :column-position="columnOrder"
             class="w-full"

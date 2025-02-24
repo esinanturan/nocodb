@@ -14,21 +14,21 @@ import type { PutObjectRequest, S3 as S3Client } from '@aws-sdk/client-s3';
 import type { IStorageAdapterV2, XcFile } from '~/types/nc-plugin';
 import { generateTempFilePath, waitForStreamClose } from '~/utils/pluginUtils';
 
-interface GenerocObjectStorageInput {
+interface GenericObjectStorageInput {
   bucket: string;
   region?: string;
-  access_key: string;
-  access_secret: string;
+  access_key?: string;
+  access_secret?: string;
 }
 
 export default class GenericS3 implements IStorageAdapterV2 {
   public name;
 
   protected s3Client: S3Client;
-  protected input: GenerocObjectStorageInput;
+  protected input: GenericObjectStorageInput;
 
-  constructor(input: unknown) {
-    this.input = input as GenerocObjectStorageInput;
+  constructor(input: GenericObjectStorageInput) {
+    this.input = input;
   }
 
   protected get defaultParams() {
@@ -64,14 +64,7 @@ export default class GenericS3 implements IStorageAdapterV2 {
   }
 
   public async fileRead(key: string): Promise<any> {
-    const command = new GetObjectCommand({
-      Key: this.patchKey(key),
-      Bucket: this.input.bucket,
-    });
-
-    const { Body } = await this.s3Client.send(command);
-
-    const fileStream = Body as Readable;
+    const fileStream = await this.fileReadByStream(key);
 
     return new Promise((resolve, reject) => {
       const chunks: any[] = [];
@@ -104,7 +97,7 @@ export default class GenericS3 implements IStorageAdapterV2 {
     options?: {
       mimetype?: string;
     },
-  ): Promise<void> {
+  ): Promise<string | null> {
     try {
       const streamError = new Promise<void>((_, reject) => {
         stream.on('error', (err) => {
@@ -189,9 +182,17 @@ export default class GenericS3 implements IStorageAdapterV2 {
     }
   }
 
-  // TODO - implement
-  fileReadByStream(_key: string): Promise<Readable> {
-    return Promise.resolve(undefined);
+  async fileReadByStream(key: string): Promise<Readable> {
+    const command = new GetObjectCommand({
+      Key: this.patchKey(key),
+      Bucket: this.input.bucket,
+    });
+
+    const { Body } = await this.s3Client.send(command);
+
+    const fileStream = Body as Readable;
+
+    return fileStream;
   }
 
   public async getDirectoryList(prefix: string): Promise<string[]> {

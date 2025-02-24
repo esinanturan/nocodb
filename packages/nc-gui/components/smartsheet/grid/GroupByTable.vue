@@ -273,9 +273,25 @@ async function deleteSelectedRowsWrapper() {
   // reload table data
   await reloadTableData({ shouldShowLoading: false })
 }
+
+const reloadViewDataHook = inject(ReloadViewDataHookInj, createEventHook())
+
+onBeforeUnmount(async () => {
+  // reset hooks
+  reloadViewDataHook?.off(reloadTableData)
+})
+
+reloadViewDataHook?.on(reloadTableData)
+
+eventBus.on((event) => {
+  if (event === SmartsheetStoreEvents.GROUP_BY_RELOAD || event === SmartsheetStoreEvents.DATA_RELOAD) {
+    reloadViewDataHook?.trigger()
+  }
+})
 </script>
 
 <template>
+  <!-- eslint-disable vue/no-restricted-v-bind -->
   <Table
     v-if="vGroup.rows"
     v-model:selected-all-records="selectedAllRecords"
@@ -287,7 +303,7 @@ async function deleteSelectedRowsWrapper() {
     :change-page="(p: number) => props.loadGroupPage(vGroup, p)"
     :call-add-empty-row="(addAfter?: number) => addEmptyRow(vGroup, addAfter)"
     :expand-form="expandForm"
-    :row-height="rowHeight"
+    :row-height-enum="rowHeight"
     :delete-row="deleteRow"
     :delete-selected-rows="deleteSelectedRowsWrapper"
     :delete-range-of-rows="deleteRangeOfRows"
@@ -312,6 +328,8 @@ async function deleteSelectedRowsWrapper() {
       @update:model-value="addRowExpandOnClose(expandedFormRow)"
     />
   </Suspense>
+
+  <!-- eslint-disable vue/eqeqeq -->
   <SmartsheetExpandedForm
     v-if="expandedFormOnRowIdDlg && meta?.id && groupByKeyId === vGroup.key"
     v-model="expandedFormOnRowIdDlg"
@@ -329,5 +347,3 @@ async function deleteSelectedRowsWrapper() {
     @prev="goToPreviousRow"
   />
 </template>
-
-<style scoped lang="scss"></style>
